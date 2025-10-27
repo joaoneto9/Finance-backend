@@ -1,57 +1,71 @@
 import os
-from tkinter import E
+from typing import Any
 import psycopg
+from psycopg.rows import dict_row, DictRow
+from psycopg import sql
 
-with psycopg.connect(
-    host=os.getenv("DB_HOST"),
-    port=os.getenv("DB_PORT"),
-    dbname=os.getenv("DB_FINANCE_DATABASE_NAME"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_USER_PASSWORD")
-) as conn:
-    with conn.cursor() as cur:
+class User_repository:
 
-        def save_user(username: str, email: str, password: str) -> bool:
-            # verificação de existencia de um usuario com email
+    def __init__(self) -> None:
+        self.conn = psycopg.connect(
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT"),
+            dbname=os.getenv("DB_FINANCE_DATABASE_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_USER_PASSWORD")
+        )
+        self.table = "users"
+
+    def login_user(self, email: str, password: str) -> dict[str, Any] | None:
+        with self.conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT * 
+                FROM user_db
+                WHERE email = %s
+                """, (email,)
+            )
+
+            line: dict[str, Any] | None = cur.fetchone()
+
+            if line is None:
+                Exception("seu email ainda não tem cadastro")
+
+            if line['user_password'] != password:  # type: ignore
+                Exception("senha incorreta")
+
+            return line
+
+
+    def register_user(self, username: str, email: str, password: str) -> bool:
+        with self.conn.cursor() as cur:
             try:
-                cur.execute("""
+                query = sql.SQL("""
                     SELECT email 
-                    FROM user_db
+                    FROM {table}
                     WHERE email = %s
-                """, (email,))
+                """).format(table=sql.Identifier(self.table))
+
+                cur.execute(query, (email,))
 
                 line = cur.fetchone()
 
                 if line is not None:
                     return False
-                
+                    
                 # inserção de um usuário
-                cur.execute(
+
+                insert = sql.SQL(
                     """
-                    INSERT INTO user_db (username, email, password) 
-                    VALUES (%s, %s, %s)
-                    """, (username, email, password)
-                )
-            
-                conn.commit()
-                return True
-            except Exception as e:
-                conn.rollback()
-                return False
-        
-        def get_username_by_email(email: str) -> str:
-            try:
-                cur.execute("""
-                    SELECT username
-                    FROM user_db
-                    WHERE email == %s
-                """, (email,))
+                        INSERT INTO {table} (username, email, user_password) 
+                        VALUES (%s, %s, %s)
+                    """).format(table=sql.Identifier(self.table))
 
-                row = cur.fetchone()
-
-                if row is None:
-                    return ""
+                cur.execute(insert, (username, email, password))
                 
-                return row[0]
+                self.conn.commit()
+                return True
+            
             except Exception as e:
-                return ""
+                self.conn.rollback()
+                return False
