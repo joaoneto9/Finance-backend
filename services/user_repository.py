@@ -5,7 +5,7 @@ import psycopg
 with psycopg.connect(
     host=os.getenv("DB_HOST"),
     port=os.getenv("DB_PORT"),
-    dbname=os.getenv("DB_NAME"),
+    dbname=os.getenv("DB_FINANCE_DATABASE_NAME"),
     user=os.getenv("DB_USER"),
     password=os.getenv("DB_USER_PASSWORD")
 ) as conn:
