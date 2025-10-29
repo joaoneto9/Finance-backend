@@ -1,8 +1,10 @@
 import os
 from typing import Any
+from webbrowser import get
 import psycopg
 from psycopg.rows import dict_row, DictRow
 from psycopg import sql
+from cryptography.fernet import Fernet
 
 class User_repository:
 
@@ -15,23 +17,27 @@ class User_repository:
             password=os.getenv("DB_USER_PASSWORD")
         )
         self.table = "users"
-
+        self.cripter = Fernet(key=os.getenv("SECRET_KEY", Fernet.generate_key())) # não posso perder a chave
+        
     def login_user(self, email: str, password: str) -> dict[str, Any] | None:
         with self.conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
+            query = sql.SQL(
                 """
-                SELECT * 
-                FROM user_db
-                WHERE email = %s
-                """, (email,)
-            )
+                    SELECT * 
+                    FROM {table}
+                    WHERE email = %s
+                """
+            ).format(table=sql.Identifier(self.table))
+            
+            cur.execute(query, (email,))
 
             line: dict[str, Any] | None = cur.fetchone()
+            print(line)
 
             if line is None:
                 Exception("seu email ainda não tem cadastro")
 
-            if line['user_password'] != password:  # type: ignore
+            elif self.cripter.decrypt(line['user_password']) != password:
                 Exception("senha incorreta")
 
             return line
@@ -61,7 +67,8 @@ class User_repository:
                         VALUES (%s, %s, %s)
                     """).format(table=sql.Identifier(self.table))
 
-                cur.execute(insert, (username, email, password))
+                cur.execute(insert, (username, email, 
+                                     self.cripter.encrypt(password.encode()))) # encript the password
                 
                 self.conn.commit()
                 return True
