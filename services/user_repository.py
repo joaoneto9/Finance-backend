@@ -17,13 +17,13 @@ class User_repository:
             password=os.getenv("DB_USER_PASSWORD")
         )
         self.table = "users"
-        self.cripter = Fernet(key=os.getenv("SECRET_KEY", Fernet.generate_key())) # não posso perder a chave
+        self.cripter = Fernet(key=os.getenv("SECRET_KEY", "SECRET_KEY").encode()) # não posso perder a chave
         
     def login_user(self, email: str, password: str) -> dict[str, Any] | None:
         with self.conn.cursor(row_factory=dict_row) as cur:
             query = sql.SQL(
                 """
-                    SELECT * 
+                    SELECT *
                     FROM {table}
                     WHERE email = %s
                 """
@@ -32,15 +32,13 @@ class User_repository:
             cur.execute(query, (email,))
 
             line: dict[str, Any] | None = cur.fetchone()
-            print(line)
 
             if line is None:
                 Exception("seu email ainda não tem cadastro")
-
-            elif self.cripter.decrypt(line['user_password']) != password:
+            elif self.cripter.decrypt(line['user_password'].encode()).decode() != password:
                 Exception("senha incorreta")
 
-            return line
+            return line 
 
 
     def register_user(self, username: str, email: str, password: str) -> bool:
@@ -68,7 +66,7 @@ class User_repository:
                     """).format(table=sql.Identifier(self.table))
 
                 cur.execute(insert, (username, email, 
-                                     self.cripter.encrypt(password.encode()))) # encript the password
+                                     self.cripter.encrypt(password.encode()).decode())) # encript the password
                 
                 self.conn.commit()
                 return True

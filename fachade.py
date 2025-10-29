@@ -23,4 +23,11 @@ def register_user():
 
 @app.post(user_enpoint + "/login")
 def login_user():
-    return jsonify(), 200
+    data = request.get_json()
+    
+    try:
+        user = user_repository.login_user(data['email'], data['password'])
+        
+        return jsonify(user), 200
+    except Exception as e:
+        return jsonify({"response": "usuário informou credencias incorretas"}), 400
