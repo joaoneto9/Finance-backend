@@ -1,21 +1,14 @@
 import os
 from typing import Any
 from webbrowser import get
-import psycopg
 from psycopg.rows import dict_row, DictRow
-from psycopg import sql
+from psycopg import Connection, sql
 from cryptography.fernet import Fernet
 
 class User_repository:
 
-    def __init__(self) -> None:
-        self.conn = psycopg.connect(
-            host=os.getenv("DB_HOST"),
-            port=os.getenv("DB_PORT"),
-            dbname=os.getenv("DB_FINANCE_DATABASE_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_USER_PASSWORD")
-        )
+    def __init__(self, conn: Connection) -> None:
+        self.conn = conn
         self.table = "users"
         self.cripter = Fernet(key=os.getenv("SECRET_KEY", "SECRET_KEY").encode()) # não posso perder a chave
         

@@ -1,16 +1,26 @@
-from doctest import debug
-import email
-from os import access
-from pickle import TRUE
-from flask import Flask, config, jsonify, request
+import os
+from flask import Flask, jsonify, request
+import psycopg
 from services.user_repository import User_repository
-from flask_jwt_extended import JWTManager, create_access_token
+from services.expense_repository import Expense_repository
+from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
+from datetime import datetime
 import secrets
 
 user_enpoint = "/user"
+expense_endpoint = "/expense"
 
 # starting the connection with the data-base
-user_repository = User_repository()
+conn: psycopg.Connection = psycopg.connect(
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT"),
+            dbname=os.getenv("DB_FINANCE_DATABASE_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_USER_PASSWORD")
+        )
+
+user_repository = User_repository(conn=conn)
+expense_repository = Expense_repository(conn=conn)
 
 app = Flask(__name__)
 
@@ -21,10 +31,6 @@ app.config.update(
 
 jwt = JWTManager(app)
    
-@app.get(user_enpoint) 
-def get_user():
-    return jsonify(), 200
-
 @app.post(user_enpoint)  
 def register_user():
     data = request.get_json()
@@ -42,10 +48,28 @@ def login_user():
         user = user_repository.login_user(data['email'], data['password'])
         
         access_token = create_access_token(identity=data['email']) # type: ignore
-        
+
         return jsonify({
             "username": user["username"], # type: ignore
             "token": access_token
         }), 200
     except Exception as e:
         return jsonify({"response": "usuário informou credencias incorretas"}), 400
+    
+
+@app.post(expense_endpoint)
+@jwt_required()
+def register_expense():
+    data = request.get_json()
+    
+    save_expense = expense_repository.register_expense(
+                            datetime.today().strftime('%Y-%m-%d'), 
+                            data['payment_date'], 
+                            data['amount'], 
+                            data['payment_description'], 
+                            data['type_of_payment'],
+                            get_jwt_identity())
+    if save_expense:
+        return jsonify({"response": "gasto cadastrado com sucesso"}), 200
+    
+    return jsonify({"reponse": "erro ao cadatsrar um gasto, concerte os dados passados."}), 400
