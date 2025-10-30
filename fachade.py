@@ -1,5 +1,11 @@
-from flask import Flask, jsonify, request
+from doctest import debug
+import email
+from os import access
+from pickle import TRUE
+from flask import Flask, config, jsonify, request
 from services.user_repository import User_repository
+from flask_jwt_extended import JWTManager, create_access_token
+import secrets
 
 user_enpoint = "/user"
 
@@ -8,11 +14,18 @@ user_repository = User_repository()
 
 app = Flask(__name__)
 
-@app.get(user_enpoint)
+app.config.update(
+    TESTING=True,
+    SECRET_KEY=secrets.token_hex(16)
+)  
+
+jwt = JWTManager(app)
+   
+@app.get(user_enpoint) 
 def get_user():
     return jsonify(), 200
 
-@app.post(user_enpoint)
+@app.post(user_enpoint)  
 def register_user():
     data = request.get_json()
     
@@ -28,6 +41,11 @@ def login_user():
     try:
         user = user_repository.login_user(data['email'], data['password'])
         
-        return jsonify(user), 200
+        access_token = create_access_token(identity=data['email']) # type: ignore
+        
+        return jsonify({
+            "username": user["username"], # type: ignore
+            "token": access_token
+        }), 200
     except Exception as e:
         return jsonify({"response": "usuário informou credencias incorretas"}), 400
