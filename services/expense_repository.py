@@ -1,5 +1,6 @@
 from decimal import Decimal
 from psycopg import Connection, sql
+from psycopg.rows import dict_row
 
 class Expense_repository:
 
@@ -33,3 +34,20 @@ class Expense_repository:
                 print(e)
                 self.conn.rollback()
                 return False
+        
+    def get_users_expenses(self, user_email: str) -> list:
+        with self.conn.cursor(row_factory=dict_row) as cursor:
+            query = sql.SQL(
+                """
+                    SELECT * 
+                    FROM {table}
+                    WHERE user_email = %s
+                """
+            ).format(table=sql.Identifier(self.table))
+
+            cursor.execute(query, (user_email,))
+
+            data = cursor.fetchall()
+
+        return data
+

@@ -69,7 +69,15 @@ def register_expense():
                             data['payment_description'], 
                             data['type_of_payment'],
                             get_jwt_identity())
-    if save_expense:
-        return jsonify({"response": "gasto cadastrado com sucesso"}), 200
+    if not save_expense:
+        return jsonify({"reponse": "erro ao cadatsrar um gasto, concerte os dados passados."}), 400
     
-    return jsonify({"reponse": "erro ao cadatsrar um gasto, concerte os dados passados."}), 400
+    return jsonify({"response": "gasto cadastrado com sucesso"}), 200
+
+@app.get(expense_endpoint)
+@jwt_required()
+def get_users_expenses():
+    
+    expenses = expense_repository.get_users_expenses(get_jwt_identity())
+
+    return jsonify(expenses), 200

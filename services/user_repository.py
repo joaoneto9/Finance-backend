@@ -1,7 +1,6 @@
 import os
 from typing import Any
-from webbrowser import get
-from psycopg.rows import dict_row, DictRow
+from psycopg.rows import dict_row
 from psycopg import Connection, sql
 from cryptography.fernet import Fernet
 
