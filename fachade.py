@@ -6,6 +6,7 @@ from services.expense_repository import Expense_repository
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
 from datetime import datetime
 import secrets
+from flask_cors import CORS
 
 user_enpoint = "/user"
 expense_endpoint = "/expense"
@@ -23,6 +24,7 @@ user_repository = User_repository(conn=conn)
 expense_repository = Expense_repository(conn=conn)
 
 app = Flask(__name__)
+CORS(app)
 
 app.config.update(
     TESTING=True,
@@ -81,3 +83,4 @@ def get_users_expenses():
     expenses = expense_repository.get_users_expenses(get_jwt_identity())
 
     return jsonify(expenses), 200
+
