@@ -26,10 +26,10 @@ class User_repository:
             line: dict[str, Any] | None = cur.fetchone()
 
             if line is None:
-                Exception("seu email ainda não tem cadastro")
+                raise Exception("seu email ainda não tem cadastro")
             elif self.cripter.decrypt(line['user_password'].encode()).decode() != password:
-                Exception("senha incorreta")
-
+                raise Exception("senha incorreta")
+            
             return line 
 
 
