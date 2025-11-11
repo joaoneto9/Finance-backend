@@ -1,6 +1,7 @@
 from decimal import Decimal
-from psycopg import Connection, sql
+from psycopg import Connection, Cursor, sql
 from psycopg.rows import dict_row
+from datetime import datetime
 
 class Expense_repository:
 
@@ -9,22 +10,22 @@ class Expense_repository:
         self.table = "expenses"
 
     def register_expense(self, register_date: str, 
-                         paymant_date: str, amount: int, 
+                         payment_date: str, amount: int, 
                          payment_description: str, type_of_payment: str,
                          user_email: str):
         with self.conn.cursor() as cursor:
             insert = sql.SQL(
                 """
                     INSERT INTO {table}
-                    (register_date, paymant_date, amount, 
-                    payment_description, type_of_paymant, user_email)
+                    (register_date, payment_date, amount, 
+                    payment_description, type_of_payment, user_email)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """
             ).format(table=sql.Identifier(self.table))
 
             try:
                 cursor.execute(insert, (register_date, 
-                            paymant_date, Decimal(amount), 
+                            payment_date, Decimal(amount), 
                             payment_description, type_of_payment,
                             user_email))
             
@@ -39,7 +40,7 @@ class Expense_repository:
         with self.conn.cursor(row_factory=dict_row) as cursor:
             query = sql.SQL(
                 """
-                    SELECT * 
+                    SELECT id, amount, payment_date, payment_description, register_date, type_of_payment
                     FROM {table}
                     WHERE user_email = %s
                 """
@@ -50,4 +51,31 @@ class Expense_repository:
             data = cursor.fetchall()
 
         return data
+    
+    def get_users_expenses_by_date(self, user_email: str, date, specified_data: bool):
+        with self.conn.cursor(row_factory=dict_row) as cursor:
+            if not specified_data:
+                query = sql.SQL(
+                    """
+                        SELECT id, amount, payment_date, payment_description, register_date, type_of_payment
+                        FROM {table}
+                        WHERE DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', %s::date) AND user_email = %s
+                    """
+                ).format(table=sql.Identifier(self.table))
 
+            else:
+                query = sql.SQL(
+                    """
+                        SELECT id, amount, payment_date, payment_description, register_date, type_of_payment
+                        FROM {table}
+                        WHERE payment_date = %s AND user_email = %s
+                    """
+                ).format(table=sql.Identifier(self.table))
+
+            cursor.execute(query, (datetime.strptime(date, "%Y-%m-%d"), user_email))
+
+            data = cursor.fetchall()
+
+        return data
+        
+ 

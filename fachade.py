@@ -1,3 +1,4 @@
+from calendar import month
 import os
 from flask import Flask, jsonify, request
 import psycopg
@@ -79,8 +80,14 @@ def register_expense():
 @app.get(expense_endpoint)
 @jwt_required()
 def get_users_expenses():
+
+    date = request.args.get('date') # requiriment param for the date.
+    is_specified_data = request.args.get("specified", "true").lower() # requiriment param to indicate teh specified query
     
-    expenses = expense_repository.get_users_expenses(get_jwt_identity())
+    if date is not None:
+        expenses = expense_repository.get_users_expenses_by_date(get_jwt_identity(), date, is_specified_data == "true")
+    else:
+        expenses = expense_repository.get_users_expenses(get_jwt_identity())
 
     return jsonify(expenses), 200
 
